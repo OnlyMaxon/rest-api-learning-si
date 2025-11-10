@@ -10,7 +10,7 @@ import { UserCard } from '@/components/UserCard'
 import { UserForm } from '@/components/UserForm'
 import { ApiRequestPanel } from '@/components/ApiRequestPanel'
 import { ApiResponsePanel } from '@/components/ApiResponsePanel'
-import { RestApiSimulator } from '@/lib/api'
+import { RestApiSimulator, RealApiClient } from '@/lib/api'
 import type { User, ApiRequest, ApiResponse, HttpMethod } from '@/lib/types'
 
 function App() {
@@ -21,10 +21,16 @@ function App() {
   const [showUserForm, setShowUserForm] = useState(false)
   const [editingUser, setEditingUser] = useState<User | undefined>()
 
-  const api = new RestApiSimulator(
+  const useReal = (import.meta as any).env?.VITE_USE_REAL_SERVER === 'true'
+  const realBase = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:5000'
+
+  const simulator = new RestApiSimulator(
     async () => users || [],
     (newUsers) => setUsers(newUsers)
   )
+
+  const real = new RealApiClient(realBase)
+  const api = useReal ? real : simulator
 
   const makeRequest = async (method: HttpMethod, endpoint: string, body?: unknown) => {
     const request: ApiRequest = {
@@ -42,7 +48,7 @@ function App() {
     setIsLoading(true)
 
     try {
-      const response = await api.request(method, endpoint, body)
+  const response = await api.request(method, endpoint, body)
       setCurrentResponse(response)
       
       if (response.status >= 200 && response.status < 300) {

@@ -164,3 +164,47 @@ export class RestApiSimulator {
     }
   }
 }
+
+// Optional real API client with the same shape as RestApiSimulator.request
+export class RealApiClient {
+  private baseUrl: string
+
+  constructor(baseUrl: string) {
+    this.baseUrl = baseUrl.replace(/\/$/, '')
+  }
+
+  async request<T>(method: HttpMethod, endpoint: string, body?: unknown): Promise<ApiResponse<T>> {
+    const url = `${this.baseUrl}${endpoint}`
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    }
+    const init: RequestInit = {
+      method,
+      headers,
+      body: method === 'GET' || method === 'DELETE' ? undefined : JSON.stringify(body)
+    }
+    const start = Date.now()
+    try {
+      const res = await fetch(url, init)
+      const contentType = res.headers.get('content-type') || ''
+      const data = contentType.includes('application/json') ? await res.json() : await res.text()
+      const out: ApiResponse<T> = {
+        status: res.status,
+        statusText: res.statusText,
+        headers: Object.fromEntries(res.headers.entries()),
+        body: data as T,
+        timestamp: start
+      }
+      return out
+    } catch (e) {
+      return {
+        status: 0,
+        statusText: 'NETWORK_ERROR',
+        headers: {},
+        body: { error: 'Network error' } as T,
+        timestamp: start
+      }
+    }
+  }
+}
